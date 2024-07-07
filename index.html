@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Saver</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <!-- this is the heading -->
+  <div class="heading flex">
+    <i class="fa-solid fa-id-card-clip" style="padding-right: 10px;color:blue"></i>
+    <h1>Contact Saver</h1>
+  </div>
+<!-- buttoms and information stuff -->
+  <div class="content flex">
+    <div id="intro" class="flex">
+      <h2>Convert EXCEL to VCF</h2>
+      <p >"Effortlessly convert your Excel contacts to VCF format!"</p>
+    </div>
+    <div class="message">
+      <p style="color:red;">**Please note:** Your Excel file should have two columns named "Name" and "Phone".</p>
+    </div>
+    <div class="fileBox flex">
+      <button id="uploadButton">Select an XL File</button>
+      <button id="downloadButton" disabled>Download File</button>
+      <input type="file" id="fileInput" accept=".xls,.xlsx" style="display: none;">
+    </div>
+    <!-- loader div displays only while converting the file -->
+    <div id="loader"></div>
+  </div>
+
+  <script>
+    const uploadButton = document.getElementById('uploadButton');
+    const fileInput = document.getElementById('fileInput');
+    const downloadButton = document.getElementById('downloadButton');
+    /* on clicking on upload buttom internally the invisible file input button is clicked */
+    uploadButton.addEventListener('click', function () {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        
+        document.getElementById('loader').style.display = 'block';
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const headerRow = worksheet['!ref'].split(':')[0].slice(1); // Get header row range
+      
+          const json = XLSX.utils.sheet_to_json(worksheet);
+
+          // VCF conversion logic
+          let vcfData = '';
+          json.forEach(contact => {
+            vcfData += 'BEGIN:VCARD\n';
+            vcfData += 'VERSION:3.0\n';
+            if (contact['Name'] && contact['Phone']) {
+              vcfData += `N:${contact['Name']}\n`; 
+              vcfData += `TEL;TYPE=CELL:${contact['Phone']}\n`; 
+              if (contact['Email']) 
+              { 
+                vcfData += `EMAIL:${contact['Email']?.trim()}\n`;
+              }
+            }
+            vcfData += 'END:VCARD\n';
+          });
+
+
+          // Download VCF file function
+          function download() {
+            const blob = new Blob([vcfData], { type: 'text/vcard' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'contacts.vcf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+          document.getElementById('downloadButton').style.backgroundColor = 'green';
+          // Add event listener to download button
+          downloadButton.addEventListener('click', download);
+
+          // Handle successful conversion
+          document.getElementById('loader').style.display = 'none';
+          downloadButton.disabled = false;
+
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  </script>
+</body>
+
+</html>
